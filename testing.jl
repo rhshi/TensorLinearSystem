@@ -1,17 +1,17 @@
 include("util.jl") 
 
 
-function processRank(singVals; tol=1e-10)
-    for k=1:length(singVals)-1
-        sVal1 = singVals[k]
-        sVal2 = singVals[k+1]
+function processRank(vals; tol=1e-10)
+    for k=1:length(vals)-1
+        val1 = vals[k]
+        val2 = vals[k+1]
         
-        if sVal2/sVal1 <= tol
+        if val2/val1 <= tol
            return k 
         end
         
     end
-    return length(singVals)
+    return length(vals)
 end;
 
 function linearSystem(T, basis_inds)

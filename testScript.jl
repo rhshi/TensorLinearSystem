@@ -54,16 +54,26 @@ for n=nStart:nEnd
             c += 1
             
             eqNum, varNum = size(X)
-            singValsX = svdvals(X)
-            singValsY = svdvals(Y)
+#             singValsX = svdvals(X)
+#             singValsY = svdvals(Y)
+            
+            rValsX = sort(abs.(diag(qr(X).R)), rev=true)
+            rValsY = sort(abs.(diag(qr(Y).R)), rev=true)
             
             jldopen(fName, "a+") do file
                 file["$n/$r/numVars"] = varNum
                 file["$n/$r/numEqs"] = eqNum
-                file["$n/$r/singVals"] = singValsX
-                file["$n/$r/rank"] = processRank(singValsX)
-                file["$n/$r/singValsGenericCoeffs"] = singValsY
-                file["$n/$r/rankGenericCoeffs"] = processRank(singValsY)
+                
+#                 file["$n/$r/singVals"] = singValsX
+#                 file["$n/$r/rank"] = processRank(singValsX)
+#                 file["$n/$r/singValsGenericCoeffs"] = singValsY
+#                 file["$n/$r/rankGenericCoeffs"] = processRank(singValsY)
+                
+                file["$n/$r/rVals"] = rValsX
+                file["$n/$r/rank"] = processRank(rValsX)
+                file["$n/$r/rValsGenericCoeffs"] = rValsY
+                file["$n/$r/rankGenericCoeffs"] = processRank(rValsY)
+                
             end
         end
     end
