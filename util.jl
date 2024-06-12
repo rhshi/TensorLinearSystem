@@ -113,7 +113,7 @@ function e(j, n)
     return ej
 end
 
-function linEqsTups(set1, set2, n, D, basis, basis_inds; linear=true)
+function makeEqsTups(set1, set2, n, D, basis, basis_inds; linear=true)
     eqTups1 = Set()
     eqTups2 = Set()
 
@@ -181,20 +181,17 @@ function processLinEq(eqTup, D, coeffDict, alphas, basis_inds, H0_det, H0_adj, T
     
 end
 
-function processLinEqGeneric(eqTup, D, coeffDict, genericDict, alphas, d, detValue)
-    coeffRow = zeros(Float64, length(coeffDict))
+function processLinEqGeneric(eqTup, coeffDict, genericDict, alphas, d, detValue; numType=Float64)
+    coeffRow = zeros(numType, length(coeffDict))
     
     a_i = [x for x in eqTup[1]]
     b_j = [x for x in eqTup[2]]
-    
-    a_i_ = Tuple(vcat(d-sum(a_i), a_i))
-    b_j_ = Tuple(vcat(d-sum(b_j), b_j))
     
     if Tuple(a_i+b_j) in keys(coeffDict)
         coeffRow[coeffDict[Tuple(a_i+b_j)]] = detValue
     end
     
-    for (i, alpha_prime_) in enumerate(reverse(alphas))
+    for (i, alpha_prime_) in enumerate(alphas)
         alpha_prime = [x for x in alpha_prime_[2:end]]
         coeffRow[coeffDict[Tuple(a_i+alpha_prime)]] = (-1)^i * genericDict[(Tuple(alpha_prime), Tuple(b_j))]
     end
@@ -202,3 +199,46 @@ function processLinEqGeneric(eqTup, D, coeffDict, genericDict, alphas, d, detVal
     return coeffRow
     
 end
+
+function linEqsTups(set1, set2, n, D, basis, basis_inds, twoSide=true)
+    eqTups = []
+    abij = []
+
+    for alpha_ in set1
+        alpha = [a_ for a_ in alpha_]
+        for beta_ in set2
+            beta = [b_ for b_ in beta_]
+            for i=1:n-1
+                ei = e(i+1, n)
+                ei[1] = -1
+                for j=i+1:n-1
+                    ej = e(j+1, n)
+                    ej[1] = -1
+
+                    a_i = Tuple((alpha+ei))
+                    a_j = Tuple((alpha+ej))
+                    b_i = Tuple((beta+ei))
+                    b_j = Tuple((beta+ej))
+                    
+                    if (b_i in basis) && !(b_j in basis) 
+                        push!(eqTups, ((a_i[2:end], b_j[2:end]), 1))
+                        push!(abij, (alpha[2:end], beta[2:end], i, j))
+                    elseif (b_j in basis) && !(b_i in basis)
+                        push!(eqTups, ((a_j[2:end], b_i[2:end]), 1))
+                        push!(abij, (alpha[2:end], beta[2:end], i, j))
+                    elseif !(b_i in basis) && !(b_j in basis) 
+                        if twoSide
+                            push!(eqTups, (((a_i[2:end], b_j[2:end]), (a_j[2:end], b_i[2:end])), 2))
+                            push!(abij, (alpha[2:end], beta[2:end], i, j))
+                        end
+                    end
+
+                    
+
+                end
+            end
+        end
+    end
+    
+    return eqTups, abij
+end;

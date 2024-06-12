@@ -1,5 +1,5 @@
 include("testing.jl")
-using Printf, JLD2
+using Printf
 
 
 println("Enter a filename:")
@@ -31,7 +31,7 @@ end;
 print("\n")
 flush(stdout)
 
-println("Gathering statisics for n=$nStart,...,$nEnd\n")
+println("Gathering statistics for n=$nStart,...,$nEnd\n")
 
 for n=nStart:nEnd
     println("n=$n")
@@ -54,25 +54,16 @@ for n=nStart:nEnd
             c += 1
             
             eqNum, varNum = size(X)
-#             singValsX = svdvals(X)
-#             singValsY = svdvals(Y)
-            
-            rValsX = sort(abs.(diag(qr(X).R)), rev=true)
-            rValsY = sort(abs.(diag(qr(Y).R)), rev=true)
+
+            singValsX = svdvals(X)
+            singValsY = svdvals(Y)
             
             jldopen(fName, "a+") do file
                 file["$n/$r/numVars"] = varNum
                 file["$n/$r/numEqs"] = eqNum
                 
-#                 file["$n/$r/singVals"] = singValsX
-#                 file["$n/$r/rank"] = processRank(singValsX)
-#                 file["$n/$r/singValsGenericCoeffs"] = singValsY
-#                 file["$n/$r/rankGenericCoeffs"] = processRank(singValsY)
-                
-                file["$n/$r/rVals"] = rValsX
-                file["$n/$r/rank"] = processRank(rValsX)
-                file["$n/$r/rValsGenericCoeffs"] = rValsY
-                file["$n/$r/rankGenericCoeffs"] = processRank(rValsY)
+                file["$n/$r/singVals"] = singValsX
+                file["$n/$r/singValsGenericCoeffs"] = singValsY
                 
             end
         end

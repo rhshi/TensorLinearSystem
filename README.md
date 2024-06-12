@@ -6,6 +6,7 @@ Dependencies:
 * InvertedIndices
 * Printf
 * JLD2
+* Symbolics (if wanting to analyze some of these matrices symbolically)
 
 The main script is `testScript.jl`.  Just run `julia testScript.jl` and you'll receive three input prompts: the first one will be to enter the file name, e.g., if you type in "results" the experiment will be saved to a file called `results/results.jld2`.  The next prompt will be to enter the $n$ we want to start at and the last will be to enter the n we want to end at, i.e., if you type in "2" and then "10" the experiment will run for $n=2,...,10$.  We test all $r$ from $n+2$ to $\binom{n+2}{2}$, but as soon as the number of equations becomes less than the number of variables we break the loop and increase n.  This is just for performance reasons.
 
@@ -22,7 +23,7 @@ And six fields specific to $n$ and $r$, for each $r$ in the above range:
 
 To access the above data I recommend opening a Jupyter notebook.  Then run
 ```julia
-include("testing.py")
+include("testing.jl")
 f = jldopen($filename$, "r") # $filename$ is the file name, e.g., "results/results.jld2"
 getPossR, getNumVars, getNumEqs, getSingVals, getRank, getSingValsGenericCoeffs, getRankGenericCoeffs = makeStats(f)
 ```

@@ -1,7 +1,8 @@
 include("util.jl") 
+using JLD2
 
 
-function processRank(vals; tol=1e-10)
+function processRank(vals; tol=1e-8)
     for k=1:length(vals)-1
         val1 = vals[k]
         val2 = vals[k+1]
@@ -39,7 +40,7 @@ function linearSystem(T, basis_inds)
     varTups = varsInds(alphas, D);
     varTups = sort([var for var in varTups], rev=true)
     
-    eqTups1, eqTups2 = linEqsTups(alphas, betas, n+1, D, basis, basis_inds);
+    eqTups1, eqTups2 = makeEqsTups(alphas, betas, n+1, D, basis, basis_inds);
     for eqTupPair in eqTups2
         if (eqTupPair[1] in eqTups1) && (eqTupPair[2] in eqTups1)
             delete!(eqTups2, eqTupPair)
@@ -86,6 +87,23 @@ function linearSystem(T, basis_inds)
     return X1, y1, X2, y2, varTups, eqTups1, eqTups2
 end;
 
+function getVarEqTups(alphas, betas, n, D, basis, basis_inds)
+    varTups = varsInds(alphas, D);
+    varTups = sort([var for var in varTups], rev=true)
+    
+    eqTups1, eqTups2 = makeEqsTups(alphas, betas, n+1, D, basis, basis_inds);
+    for eqTupPair in eqTups2
+        if (eqTupPair[1] in eqTups1) && (eqTupPair[2] in eqTups1)
+            delete!(eqTups2, eqTupPair)
+        end
+    end
+    
+    eqTups1 = sort([eqTup for eqTup in eqTups1], rev=true)
+    eqTups2 = sort([eqTup for eqTup in eqTups2], rev=true);
+
+    return varTups, eqTups1, eqTups2
+end
+
 function linearSystemTesting(T, basis_inds)
     n = size(T)[1]-1
     d = length(size(T))
@@ -107,18 +125,7 @@ function linearSystemTesting(T, basis_inds)
     H0_adj = cofactor(H0);
     H0_det = det(H0);
 
-    varTups = varsInds(alphas, D);
-    varTups = sort([var for var in varTups], rev=true)
-    
-    eqTups1, eqTups2 = linEqsTups(alphas, betas, n+1, D, basis, basis_inds);
-    for eqTupPair in eqTups2
-        if (eqTupPair[1] in eqTups1) && (eqTupPair[2] in eqTups1)
-            delete!(eqTups2, eqTupPair)
-        end
-    end
-    
-    eqTups1 = sort([eqTup for eqTup in eqTups1], rev=true)
-    eqTups2 = sort([eqTup for eqTup in eqTups2], rev=true);
+    varTups, eqTups1, eqTups2 = getVarEqTups(alphas, betas, n, D, basis, basis_inds)
     
     if length(eqTups1) + length(eqTups2) < length(varTups)
         return nothing, nothing
@@ -204,7 +211,7 @@ function makeStats(f)
     end;
 
     function getRank(n, r)
-        return f["$n/$r/rank"]
+        return processRank(getSingVals(n, r))
     end;
     
     function getSingValsGenericCoeffs(n, r)
@@ -212,8 +219,114 @@ function makeStats(f)
     end;
     
     function getRankGenericCoeffs(n, r)
-        return f["$n/$r/rankGenericCoeffs"]
+        return processRank(getSingValsGenericCoeffs(n, r))
     end;
     
     return getPossR, getNumVars, getNumEqs, getSingVals, getRank, getSingValsGenericCoeffs, getRankGenericCoeffs
+end;
+
+function processRankR(vals, tol=1e-8)
+    return length(vals[abs.(vals) .>= tol])
+end
+
+function makeStatsR(f)
+
+    function getPossR(n)
+        c = f["$n/numR"]
+        return n+2, n+1+c
+    end;
+
+    function getNumVars(n, r)
+        return f["$n/$r/numVars"]
+    end;
+
+    function getNumEqs(n, r)
+        return f["$n/$r/numEqs"]
+    end;
+
+    function getRVals(n, r)
+        return f["$n/$r/rVals"]
+    end;
+
+    function getRank(n, r)
+        return processRankR(getRVals(n, r))
+    end;
+    
+    function getRValsGenericCoeffs(n, r)
+        return f["$n/$r/rValsGenericCoeffs"]
+    end;
+    
+    function getRankGenericCoeffs(n, r)
+        return processRankR(getRValsGenericCoeffs(n, r))
+    end;
+    
+    return getPossR, getNumVars, getNumEqs, getRVals, getRank, getRValsGenericCoeffs, getRankGenericCoeffs
+end;
+
+#################
+
+function getVarEqTups2(alphas, betas, n, D, basis, basis_inds, twoSide=true)
+    varTups = varsInds(alphas, D);
+    varTups = sort([var for var in varTups], rev=true)
+    
+    eqTups, abij = linEqsTups(alphas, betas, n+1, D, basis, basis_inds, twoSide);
+
+    return varTups, eqTups, abij
+end
+
+function linearSystem2(T, basis_inds; twoSide=true)
+    n = size(T)[1]-1
+    d = length(size(T))
+    
+    D, Drev = makeDicts(n+1, d);
+
+    basis, basisD = basisFn(basis_inds, Drev, d);
+
+    gamma = Int(floor(d/2))
+    delta = Int(floor(d/2))-1;
+
+    alphas = basis[basisD[gamma]]
+    betas = basis[basisD[delta]];
+    
+    TcatGam = catMat(T, gamma)
+    TcatDelt = catMat(T, delta)
+    H0 = TcatGam[basis_inds, basis_inds];
+
+    H0_adj = cofactor(H0);
+    H0_det = det(H0);
+
+    varTups, eqTups, abij = getVarEqTups2(alphas, betas, n, D, basis, basis_inds, twoSide)
+    
+    coeffDict = Dict()
+    for (i, varTup) in enumerate(varTups)
+        coeffDict[varTup] = i
+    end
+
+    X = Array{Complex, 2}(undef, (length(eqTups), length(varTups)))
+
+    for (k, eqTupPair) in enumerate(eqTups)
+        eqTup = eqTupPair[1]
+        flag = eqTupPair[2]
+
+        if flag == 1
+            coeffRow, _ = processLinEq(eqTup, D, coeffDict, alphas, basis_inds, H0_det, H0_adj, TcatGam, TcatDelt, d)
+            X[k, :] = coeffRow
+        elseif flag == 2
+            eqTupL = eqTup[1]
+            eqTupR = eqTup[2]
+
+            coeffRowL, _ = processLinEq(eqTupL, D, coeffDict, alphas, basis_inds, H0_det, H0_adj, TcatGam, TcatDelt, d)
+            coeffRowR, _ = processLinEq(eqTupR, D, coeffDict, alphas, basis_inds, H0_det, H0_adj, TcatGam, TcatDelt, d)
+
+            X[k, :] = coeffRowL - coeffRowR
+        end
+
+        
+    end
+
+    X ./= sqrt(Complex.(det(H0)))
+
+    return X, varTups, first.(eqTups), [b[2:end] for b in basis], abij
+        
+    
 end;

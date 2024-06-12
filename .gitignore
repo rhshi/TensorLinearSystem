@@ -1,1 +1,10 @@
-*.ipynb
+testing.ipynb
+testing2.ipynb
+testing3.ipynb
+
+testScript2.jl
+testScriptCounts.jl
+testScriptLimits.jl
+testScriptQR.jl
+
+.vscode
